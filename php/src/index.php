@@ -105,17 +105,17 @@ function attempt_login($login, $password) {
     return ['error' => 'locked'];
   }
 
-  if (!empty($user) && calculate_password_hash($password, $user['salt']) == $user['password_hash']) {
-    login_log(true, $login, $user['id']);
-    return ['user' => $user];
-  }
-  elseif (!empty($user)) {
-    login_log(false, $login, $user['id']);
-    return ['error' => 'wrong_password'];
-  }
-  else {
+  if (empty($user)) {
     login_log(false, $login);
     return ['error' => 'wrong_login'];
+  }
+
+  if (calculate_password_hash($password, $user['salt']) === $user['password_hash']) {
+    login_log(true, $login, $user['id']);
+    return ['user' => $user];
+  } else {
+    login_log(false, $login, $user['id']);
+    return ['error' => 'wrong_password'];
   }
 }
 
@@ -140,15 +140,15 @@ function current_user() {
 }
 
 function last_login() {
-  $user = current_user();
-  if (empty($user)) {
+  $user_id = $_SESSION['user_id'];
+  if (empty($user_id)) {
     return null;
   }
 
   $db = option('db_conn');
 
   $stmt = $db->prepare('SELECT * FROM login_log WHERE succeeded = 1 AND user_id = :id ORDER BY id DESC LIMIT 2');
-  $stmt->bindValue(':id', $user['id']);
+  $stmt->bindValue(':id', $user_id);
   $stmt->execute();
   $stmt->fetch();
   return $stmt->fetch(PDO::FETCH_ASSOC);
